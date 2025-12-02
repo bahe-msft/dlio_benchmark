@@ -30,7 +30,7 @@ from mpi4py import MPI
 def lines_to_dict(lines):
     dict = {}
     for l in lines.split("\n"):
-        if len(l.split(":"))==2: 
+        if len(l.split(":"))==2:
             k, v = l.split(":")
             if k[-1] == "\n":
                 k = k[:-1]
@@ -84,14 +84,14 @@ class StatsCounter(object):
             self.steps = max_steps
         self.metric_steps = self.steps - (self.args.metric_exclude_end_steps + self.args.metric_exclude_start_steps)
         self.metric_start_step = self.args.metric_exclude_start_steps
-        self.metric_end_step = self.steps - 1 - self.args.metric_exclude_end_steps 
+        self.metric_end_step = self.steps - 1 - self.args.metric_exclude_end_steps
         if self.comm.rank == 0:
             self.logger.info(f"{utcnow()} Metric calculation will exclude the beginning {self.args.metric_exclude_start_steps} and end {self.args.metric_exclude_end_steps} steps, only includes {self.metric_steps} steps.")
         self.steps_eval = math.floor(self.args.num_samples_per_file * self.args.num_files_eval / self.args.batch_size_eval / self.args.comm_size)
         self.per_epoch_stats = {}
         self.metric_steps_eval = self.steps_eval - (self.args.metric_exclude_end_steps + self.args.metric_exclude_start_steps)
         self.metric_start_step_eval = self.args.metric_exclude_start_steps
-        self.metric_end_step_eval = self.steps_eval - 1 - self.args.metric_exclude_end_steps 
+        self.metric_end_step_eval = self.steps_eval - 1 - self.args.metric_exclude_end_steps
         # Only the root process keeps track of overall stats
         # Each process keeps track of its loading and processing times independently
         self.output = {}
@@ -107,7 +107,7 @@ class StatsCounter(object):
         cpu_count_agg = np.zeros(self.MPI.nnodes())
         if self.MPI.local_rank()==0:
             cpu_count[self.MPI.node()] = self.output['host_cpu_count']
-        self.MPI.comm().Reduce(cpu_count, cpu_count_agg, op=MPI.SUM, root=0)   
+        self.MPI.comm().Reduce(cpu_count, cpu_count_agg, op=MPI.SUM, root=0)
 
         self.summary['host_cpu_count'] = [int(d) for d in cpu_count_agg]
         self.output['host_processor_name'] = platform.processor()
@@ -124,10 +124,10 @@ class StatsCounter(object):
         data_per_node = self.MPI.npernode()*self.args.num_samples_per_file * self.args.num_files_train//self.MPI.size()*self.args.record_length
         self.summary['data_size_per_host_GB'] = data_per_node/1024./1024./1024.
         if self.MPI.rank() == 0 and self.args.do_train:
-            self.logger.info(f"Total amount of data each host will consume is {data_per_node/1024./1024./1024} GB; each host has {self.summary['host_memory_GB']} GB memory") 
+            self.logger.info(f"Total amount of data each host will consume is {data_per_node/1024./1024./1024} GB; each host has {self.summary['host_memory_GB']} GB memory")
         if self.summary['data_size_per_host_GB'] <= self.output['host_memory_GB']:
             self.output['potential_caching'] = 1
-            if self.MPI.rank() == 0 and self.args.do_train: 
+            if self.MPI.rank() == 0 and self.args.do_train:
                 self.logger.warning("The amount of dataset is smaller than the host memory; data might be cached after the first epoch. Increase the size of dataset to eliminate the caching effect!!!")
         potential_caching = []
         for i in range(self.MPI.nnodes()):
@@ -182,7 +182,7 @@ class StatsCounter(object):
                 self.summary['metric']['train_throughput_stdev_samples_per_second'] = np.std(train_throughput)
                 self.summary['metric']['train_io_mean_MB_per_second'] = np.mean(train_throughput)*self.record_size/1024./1024.
                 self.summary['metric']['train_io_stdev_MB_per_second'] = np.std(train_throughput)*self.record_size/1024./1024.
-            
+
             if self.args.do_eval:
                 eval_au = np.array(self.comm.allreduce(self.eval_au))/self.comm.size
                 eval_throughput = self.comm.allreduce(self.eval_throughput)
@@ -199,7 +199,7 @@ class StatsCounter(object):
                 self.summary['metric']['eval_io_mean_MB_per_second'] = np.mean(eval_throughput)*self.record_size/1024./1024.
                 self.summary['metric']['eval_io_stdev_MB_per_second'] = np.std(eval_throughput)*self.record_size/1024./1024.
             if self.my_rank==0:
-                self.logger.output(f"{utcnow()} Saved outputs in {self.output_folder}")   
+                self.logger.output(f"{utcnow()} Saved outputs in {self.output_folder}")
                 metric="Averaged metric over all steps/epochs\n[METRIC] ==========================================================\n"
                 metric = metric + f"[METRIC] Number of Simulated Accelerators: {self.comm_size} \n"
                 if self.args.do_train:
@@ -207,7 +207,7 @@ class StatsCounter(object):
                     metric = metric + f"[METRIC] Training Throughput (samples/second): {np.mean(train_throughput):.4f} ({np.std(train_throughput):.4f})\n"
                     metric = metric + f"[METRIC] Training I/O Throughput (MB/second): {np.mean(train_throughput)*self.record_size/1024/1024:.4f} ({np.std(train_throughput)*self.record_size/1024/1024:.4f})\n"
                     metric = metric + f"[METRIC] train_au_meet_expectation: {self.summary['metric']['train_au_meet_expectation']}\n"
-                if self.args.do_checkpoint: 
+                if self.args.do_checkpoint:
                     if self.args.num_checkpoints_write > 0:
                         metric = metric + f"[METRIC] Checkpoint save duration (seconds): {self.summary['metric']['save_checkpoint_duration_mean_seconds']:.4f} ({self.summary['metric']['save_checkpoint_duration_stdev_seconds']:.4f})\n"
                         metric = metric + f"[METRIC] Checkpoint save I/O Throughput (GB/second): {self.summary['metric']['save_checkpoint_io_mean_GB_per_second']:.4f} ({self.summary['metric']['save_checkpoint_io_stdev_GB_per_second']:.4f})\n"
@@ -221,8 +221,8 @@ class StatsCounter(object):
                     metric = metric + f"[METRIC] Eval Throughput (MB/second): {np.mean(eval_throughput)*self.record_size/1024/1024:.6f} ({np.std(eval_throughput)*self.record_size/1024/1024:.6f})\n"
                     metric = metric + f"[METRIC] eval_au_meet_expectation: {self.summary['metric']['eval_au_meet_expectation']}\n"
                 metric+="[METRIC] ==========================================================\n"
-                self.logger.output(metric)   
-    def start_train(self, epoch):   
+                self.logger.output(metric)
+    def start_train(self, epoch):
         ts = utcnow()
         self.per_epoch_stats[epoch] = {
             'start': ts,
@@ -285,7 +285,7 @@ class StatsCounter(object):
         duration = pd.to_datetime(ts)- pd.to_datetime(self.per_epoch_stats[epoch]['eval']['start'])
         duration = '{:.2f}'.format(duration.total_seconds())
         self.per_epoch_stats[epoch]['eval']['end'] = ts
-        self.per_epoch_stats[epoch]['eval']['duration'] = duration  
+        self.per_epoch_stats[epoch]['eval']['duration'] = duration
         if self.my_rank == 0:
             self.logger.output(f"{ts} Ending eval - {self.steps_eval} steps completed in {duration} s")
             self.logger.output(f"{utcnow()} Epoch {epoch} [Eval] Accelerator Utilization [AU] (%): {self.output[epoch]['au']['eval']:.4f}")
@@ -363,7 +363,7 @@ class StatsCounter(object):
         self.per_epoch_stats[epoch][f'load_ckpt{block}'] = {
                 'start': ts
         }
-      
+
     def end_load_ckpt(self, epoch, block):
         ts = utcnow()
         duration = pd.to_datetime(ts) - pd.to_datetime(self.per_epoch_stats[epoch][f'load_ckpt{block}']['start'])
@@ -388,7 +388,7 @@ class StatsCounter(object):
 
     def batch_processed(self, epoch, step, block):
         current_time = time()
-        duration = current_time - self.start_time_loading 
+        duration = current_time - self.start_time_loading
         key = f'block{block}'
         self.computation_time = current_time - self.start_time_compute
         if key in self.output[epoch]['proc']:
@@ -408,6 +408,8 @@ class StatsCounter(object):
         else:
             au = total_compute_time / total_time
         throughput = (len(self.output[epoch]['compute'][key]) - 2)/(total_time)*self.batch_size
+        self.output[epoch]['total_compute_time'] = total_compute_time
+        self.output[epoch]['total_time'] = total_time
         self.output[epoch]['au'][key] = au*100
         self.output[epoch]['throughput'][key] = throughput
 
@@ -430,7 +432,7 @@ class StatsCounter(object):
 
     def eval_batch_processed(self, epoch, step):
         current_time = time()
-        duration = current_time - self.start_time_loading 
+        duration = current_time - self.start_time_loading
         computation_time = current_time - self.start_time_compute
         self.output[epoch]['proc']['eval'].append(duration)
         self.output[epoch]['compute']['eval'].append(computation_time)
