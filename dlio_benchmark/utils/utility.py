@@ -81,6 +81,22 @@ def utcnow(format=LOG_TS_FORMAT):
     return datetime.now().strftime(format)
 
 
+class CommWrapped:
+
+    def __init__(self, comm):
+        self.comm = comm
+
+    def barrier(self):
+        print(f"Barrier started by {self.comm.rank}", flush=True)
+        rv = self.comm.barrier()
+        print(f"Barrier ended by {self.comm.rank}", flush=True)
+        return rv
+
+    # forward all other methods to the original comm object
+    def __getattr__(self, name):
+        return getattr(self.comm, name)
+
+
 # After the DLIOMPI singleton has been instantiated, the next call must be
 # either initialize() if in an MPI process, or set_parent_values() if in a
 # non-MPI pytorch read_threads child process.
@@ -114,7 +130,7 @@ class DLIOMPI:
             # MPI may have already been initialized by dlio_benchmark_test.py
             if not MPI.Is_initialized():
                 MPI.Init()
-            
+
             self.mpi_state = MPIState.MPI_INITIALIZED
             split_comm = MPI.COMM_WORLD.Split_type(MPI.COMM_TYPE_SHARED)
             # Number of processes on this node and local rank
@@ -176,7 +192,7 @@ class DLIOMPI:
 
     def comm(self):
         if self.mpi_state == MPIState.MPI_INITIALIZED:
-            return self.mpi_world
+            return CommWrapped(self.mpi_world)
         elif self.mpi_state == MPIState.CHILD_INITIALIZED:
             raise Exception(f"method {self.classname()}.comm() called in a child process")
         else:
@@ -198,7 +214,7 @@ class DLIOMPI:
             raise Exception(f"method {self.classname()}.size() called before initializing MPI")
         else:
             return self.mpi_nodes
-    
+
     def node(self):
         """
         Return the node index for this rank.
@@ -207,14 +223,17 @@ class DLIOMPI:
             raise Exception(f"method {self.classname()}.node() called before initializing MPI")
         else:
             return self.mpi_node
-    
+
     def reduce(self, num):
         from mpi4py import MPI
         if self.mpi_state == MPIState.UNINITIALIZED:
             raise Exception(f"method {self.classname()}.reduce() called before initializing MPI")
         else:
-            return MPI.COMM_WORLD.allreduce(num, op=MPI.SUM)
-    
+            print(f"Reduce started by {self.mpi_rank}", flush=True)
+            rv = MPI.COMM_WORLD.allreduce(num, op=MPI.SUM)
+            print(f"Reduce ended by {self.mpi_rank}", flush=True)
+            return rv
+
     def finalize(self):
         from mpi4py import MPI
         if self.mpi_state == MPIState.MPI_INITIALIZED and MPI.Is_initialized():
@@ -289,13 +308,13 @@ def create_dur_event(name, cat, ts, dur, args={}):
     }
     return d
 
-  
+
 def get_trace_name(output_folder, use_pid=False):
     val = ""
     if use_pid:
         val = f"-{os.getpid()}"
     return f"{output_folder}/trace-{DLIOMPI.get_instance().rank()}-of-{DLIOMPI.get_instance().size()}{val}.pfw"
-        
+
 def sleep(config):
     sleep_time = 0.0
     if isinstance(config, dict) and len(config) > 0:
@@ -333,7 +352,7 @@ def gen_random_tensor(shape, dtype, rng=None):
             return arr.astype(dtype)
         else:
             return rng.random(size=shape, dtype=dtype)
-    
+
     # For integer dtypes, generate float32 first then scale and cast
     dtype_info = np.iinfo(dtype)
     records = rng.random(size=shape, dtype=np.float32)

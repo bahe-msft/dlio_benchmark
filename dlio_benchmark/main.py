@@ -49,6 +49,7 @@ dftracer_initialize = True
 dftracer_finalize   = True
 dtracer             = None
 
+
 class DLIOBenchmark(object):
     """
     The Benchmark represents the I/O behavior of deep learning applications.
@@ -120,7 +121,7 @@ class DLIOBenchmark(object):
             self.num_subfolders_eval = self.args.num_subfolders_eval
             self.num_samples = self.args.num_samples_per_file
             self.total_training_steps = self.args.total_training_steps
-            
+
             self.epochs = self.args.epochs
             self.batch_size = self.args.batch_size
             self.computation_time = self.args.computation_time
@@ -223,7 +224,7 @@ class DLIOBenchmark(object):
         self.stats.checkpoint_size = 0
         if (not self.generate_only) and (self.do_checkpoint):
             self.checkpointing_mechanism = CheckpointingFactory().get_mechanism(self.args.checkpoint_mechanism)
-            self.stats.checkpoint_size = self.checkpointing_mechanism.checkpoint_size    
+            self.stats.checkpoint_size = self.checkpointing_mechanism.checkpoint_size
         self.comm.barrier()
 
     @dft_ai.pipeline.evaluate
@@ -274,12 +275,12 @@ class DLIOBenchmark(object):
         epoch = 1
         for i in range(self.args.num_checkpoints_write):
             #self.stats.start_block(epoch, block)
-            # We still make sure that the checkpoint is done after allreduce; therefore, allreduce here is required. 
+            # We still make sure that the checkpoint is done after allreduce; therefore, allreduce here is required.
             self.framework.compute(None, epoch, block_step, self.args.time_between_checkpoints)
             self.comm.barrier()
             self.stats.start_save_ckpt(epoch, block, overall_step)
             self.checkpointing_mechanism.save_checkpoint(epoch, overall_step)
-            if self.args.checkpoint_rank_sync: 
+            if self.args.checkpoint_rank_sync:
                 self.comm.barrier()
             self.stats.end_save_ckpt(epoch, block)
             block = block+1
@@ -299,7 +300,7 @@ class DLIOBenchmark(object):
             self.comm.barrier()
             self.stats.start_load_ckpt(epoch, block, overall_step)
             self.checkpointing_mechanism.load_checkpoint(epoch, overall_step)
-            if self.args.checkpoint_rank_sync: 
+            if self.args.checkpoint_rank_sync:
                 self.comm.barrier()
             self.stats.end_load_ckpt(epoch, block)
             block = block+1
@@ -370,7 +371,7 @@ class DLIOBenchmark(object):
     @dft_ai
     def run(self):
         """
-        Run the total epochs for training. 
+        Run the total epochs for training.
         On each epoch, it prepares dataset for reading, it trains, and finalizes the dataset.
         If evaluation is enabled, it reads the eval dataset, performs evaluation and finalizes.
         """
@@ -419,7 +420,7 @@ class DLIOBenchmark(object):
                 self.stats.end_epoch(epoch)
 
         if (self.args.checkpoint_only):
-            self._checkpoint()            
+            self._checkpoint()
         self.stats.end_run()
 
     @dlp.log
@@ -457,7 +458,7 @@ class DLIOBenchmark(object):
 
 
 @hydra.main(version_base=None, config_path="configs", config_name="config")
-def run_benchmark(cfg: DictConfig):    
+def run_benchmark(cfg: DictConfig):
     benchmark = DLIOBenchmark(cfg['workload'])
     benchmark.initialize()
     benchmark.run()
@@ -483,7 +484,7 @@ def main() -> None:
 def query_config(cfg: DictConfig):
     DLIOMPI.get_instance().initialize()
     config = cfg['workload']
-    
+
     value = None
     if "query" in config["workflow"]:
         key = config["workflow"]["query"]
@@ -492,7 +493,7 @@ def query_config(cfg: DictConfig):
         value = GetConfig(args, key)
     print(value) if value else print("None")
     DLIOMPI.get_instance().finalize()
-    
+
 if __name__ == '__main__':
     main()
     exit(0)
